@@ -9,13 +9,6 @@ and probably won't be much good without it unless care is taken to arrange the i
 
 ## Usage
 
-Since this action creates a release and commits to the repo, the "read and write" option for the Actions token must be enabled in the repository's settings
-Additionally, the workflow should have at least the `contents: write` permission.
-
-```yaml
-permissions:
-  contents: write
-```
 
 At a minimum it needs to know the location of the artifacts, the name of the package, and where the repository is checked out.
 
@@ -34,15 +27,56 @@ Note that the action will fail if the repository at `repo-directory` is in a "de
 which is the default when using the checkout action on pull requests. However, this action almost
 certainly shouldn't be run against PRs.
 
+## Workflow requirements
+
+Since this action creates a release and commits to the repo, the "read and write" option for the Actions token must be enabled in the repository's settings
+Additionally, the workflow should have at least the `contents: write` permission.
+
+```yaml
+permissions:
+  contents: write
+  pull-requests: write
+```
+
+Additionally, it is recommended that the list of paths which trigger the build be as restrictive as possible to prevent
+builds from triggering based on the bot's own actions.
+
+```yaml
+name: Build
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - master
+    paths:
+      - vcpkg.json
+  push:
+    branches:
+      - master
+    paths:
+      - vcpkg.json
+```
+
+Github Actions cannot currently bypass branch protection rules (
+community discussion [#13836](https://github.com/orgs/community/discussions/13836)
+and [#25305](https://github.com/orgs/community/discussions/25305).
+If the target branch is 
+
+Pull requests also cannot force fast-forward-only, see [community discussion #4618](https://github.com/orgs/community/discussions/4618).
+
 ## Details
 
 At a high level this action does the following.
 
 - Parse the artifacts directory to determine information needed to create a Github Release.
-- Shuffle the include/lib folders inn the artifacts directory into a structure that UE expects. Also include tools, if present.
-- Add or update files to the repository that contain the artifact URL, checksum, and the checksums of all files within it.
-- Add or update a helper script which retrieves the release.
-- Add a common CS build file, gitattributes, and gitignore while we're there.
+- Shuffle the include/lib folders from the artifacts directory into a structure that UE expects.
+  - Headers are drawn from an arbitrary platform, Win64 by default.
+  - Also merge the tools folders of each artifact, if that folder is present.
+- Add or update files to the repository that allow the update-files helper script to run.
+- Generate Build.cs file and add that.
+- Add some other static files.
+  - update-files helper script
+  - gitattributes and gitignore
 - Commit, push, update the release to point at the new commit.
 
 The resulting commit will be left as a draft so that it can be manually editted prior to release.

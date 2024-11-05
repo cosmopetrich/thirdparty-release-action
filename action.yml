@@ -143,11 +143,15 @@ runs:
       working-directory: ${{ steps.staging.outputs.dir }}
       run: zip --recurse-paths '${{ steps.release-name.outputs.artifact }}' *
     - name: Create release
+      release:
       shell: bash
       working-directory: ${{ inputs.repo-directory }}
       run: |
+        URL="$(mktemp)"
         gh release create --draft --notes-file '${{ steps.release-notes.outputs.file }}' --title "${{ steps.release-name.outputs.name }}" \
-        "${{ steps.release-name.outputs.name }}" '${{ steps.staging.outputs.dir }}/${{ steps.release-name.outputs.artifact }}'
+        "${{ steps.release-name.outputs.name }}" '${{ steps.staging.outputs.dir }}/${{ steps.release-name.outputs.artifact }}' >> "${URL}"
+        echo "url=$(<$URL)"
+        rm -f "${URL}"
       env:
         GH_TOKEN: ${{ github.token }}
     - name: Create artifact checksum
@@ -174,6 +178,10 @@ runs:
       run: |
         export PACKAGE_NAME='${{ inputs.package-name }}'
         envsubst < "${GH_ACTION_PATH}/deployed/Build.cs" > '${{ steps.staging.outputs.dir}}/${{ inputs.package-name }}.Build.cs'
+    - name: Switch to a new git branch
+      shell: bash
+      working-directory: ${{ inputs.repo-directory }}
+      run: git checkout -b 'release-${{ inputs.package-name }}-${{ github.run_number }}-${{ github.run_attempt }}'
     - name: Move files into repository
       shell: bash
       working-directory: ${{ inputs.repo-directory }}
@@ -189,6 +197,7 @@ runs:
         mv '${{ steps.staging.outputs.dir }}/${{ inputs.filename-artifact-url }}' .artifact
         mv '${{ steps.staging.outputs.dir }}/${{ inputs.filename-checksum-artifact }}' .artifact
         mv '${{ steps.staging.outputs.dir }}/${{ inputs.filename-checksum-contents }}' .artifact
+        rm -rf '${{ steps.staging.outpurs.dir }}'
     - name: Commit changes
       shell: bash
       working-directory: ${{ inputs.repo-directory }}
@@ -206,18 +215,34 @@ runs:
         git config user.email '${{ inputs.commit-email }}'
         git diff-index --quiet HEAD || git commit --all --message '${{ steps.release-name.outputs.name }}'
     - name: Push
-      if: ${{ inputs.push == 'enabled' }}
       shell: bash
       working-directory: ${{ inputs.repo-directory }}
-      run: git push
+      run: git push origin "$(git branch --show-current)"
     - name: Point release at new commit
-      if: ${{ inputs.push == 'enabled' }}
       shell: bash
       working-directory: ${{ inputs.repo-directory }}
       run: gh release edit --target "$(git rev-parse HEAD)" '${{ steps.release-name.outputs.name }}'
       env:
         GH_TOKEN: ${{ github.token }}
-    - name: Clean up
+    - name: Open pull request
       shell: bash
+      working-directory: ${{ inputs.repo-directory }}
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: |
-        rm -rf '${{ steps.staging.outpurs.dir }}'
+        PR_FILE="$(mktemp)"
+        ACTIONS_URL='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}' >> "${PR_FILE}"
+        ACTIONS_NAME='run #${{ github.run_number }} (attempt ${{ github.rub_attempt }} of the ${{ github.workflow }} workflow' >> "${PR_FILE}"
+        echo "This PR was opened by [${ACTIONS_NAME}](${ACTIONS_URL})." >> "${PR_FILE}"
+        echo '' >> "${PR_FILE}"
+        echo -n "The changes here are designed to be the target of [release ${{ steps.release-name.outputs.name }}](${{ steps.release.outputs.url }})." >> "${PR_FILE}"
+        echo '' >> "${PR_FILE}"
+        echo -n 'If everything looks okay then merge this PR, delete its branch, then publish the release." >> "${PR_FILE}"
+        echo -n 'Note that if Github does not perform a fast-forward merge then you will also need to update the release to point to the newly-created commit.' >> "${PR_FILE}"
+        echo 'See [community/discussion#4618](https://github.com/orgs/community/discussions/4618).' >> "${PR_FILE}"
+        echo '' >> "${PR_FILE}"
+        echo -n 'If everything is **not** okay then it is safe to delete this PR, its branch, and the release.' >> "${PR_FILE}"
+        echo 'However, you should fix the underlying problem and allow the workflow to re-run ASAP.' >> "${PR_FILE}"
+        gh pr create --title 'Release ${{ steps.release-name.outputs.name }}' \
+          --body-file "${PR_FILE}"
+        rm -f "${PR_FILE}"

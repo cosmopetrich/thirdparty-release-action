@@ -278,11 +278,27 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Delete PRs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          FILTER='.[].headRefName | select(match("^release-.*-${{ env.TESTNAME }}-"))'
+          for pr in $(gh pr list --json headRefName --jq "${FILTER}"); do
+            gh pr close --delete-branch --comment "This was created for a test and was not intended to be merged." || true
+          done
+      - name: Delete branches
+        run: |
+          git fetch
+          for branch in $(git branch --list 'release-*-${{ env.TESTNAME }}-*'); do
+            git push origin --delete "${branch}"
+          done
       - name: Delete releases
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          FILTER=".[].tagName | select(startswith(\"${{ env.TESTNAME }}-\"))"
-          for release in $(gh release list --repo '${{ github.repository }}' --json tagName --jq "${FILTER}"); do
-            gh release delete --repo '${{ github.repository }}' --yes --cleanup-tag "${release}" || true
+          FILTER='.[].tagName | select(startswith("${{ env.TESTNAME }}-"))'
+          for release in $(gh release list --json tagName --jq "${FILTER}"); do
+            gh release delete --yes --cleanup-tag "${release}" || true
           done
