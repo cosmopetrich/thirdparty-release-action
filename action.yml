@@ -100,7 +100,7 @@ runs:
       shell: bash
       run: |
         NOTES="$(mktemp)"
-        echo "$(git -C '${{ inputs.repo-directory }}' show -s --format=%s)" >> "${NOTES}"
+        echo 'This release includes the following packages.' >> "${NOTES}"
 
         cd '${{ inputs.artifacts-directory }}'
 
@@ -113,8 +113,8 @@ runs:
 
         echo "" >> "${NOTES}"
         echo -n "Built against [${VCPKG_NAME}](${VCPKG_URL})" >> "${NOTES}"
-        echo -n " with $(jq -er '.compiler_id' '${{ inputs.headers-platform }}/vcpkg-build-info.json') $(jq -er '.compiler_toolset' '${{ inputs.headers-platform }}/vcpkg-build-info.json')" >> "${NOTES}"
-        echo " and $(jq -er '.compiler_id' '${{ inputs.headers-platform }}/vcpkg-build-info.json') $(jq -er '.compiler_toolset' '${{ inputs.headers-platform }}/vcpkg-build-info.json')." >> "${NOTES}"
+        echo -n " with $(jq -er '.compiler_id' 'Linux/vcpkg-build-info.json') $(jq -er '.compiler_toolset' 'Linux/vcpkg-build-info.json')" >> "${NOTES}"
+        echo " and $(jq -er '.compiler_id' 'Win64/vcpkg-build-info.json') $(jq -er '.compiler_toolset' 'Win64/vcpkg-build-info.json')." >> "${NOTES}"
 
         echo "file=${NOTES}" >> "$GITHUB_OUTPUT"
     - name: Shuffle files around
