@@ -1,0 +1,12 @@
+# This file is deployed via cosmopetrich/ue-thirdparty-release-action
+# Manual changes will be overwritten!
+
+# Library files deployed from release artifacts
+bin/
+include/
+lib/
+share/
+tools/
+
+# Release artifacts
+.artifact/*.zip
