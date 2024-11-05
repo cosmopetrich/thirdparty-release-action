@@ -69,12 +69,12 @@ on:
     branches:
       - master
     paths:
-      - vcpkg.json
+      - .vcpkg
   push:
     branches:
       - master
     paths:
-      - vcpkg.json
+      - .vcpkg
 ```
 
 While not an explicit requirement, it is recommended that any important branches (main/master, etc) be
