@@ -294,7 +294,7 @@ jobs:
       - name: Delete branches
         run: |
           git fetch
-          for branch in $(git branch --list 'release-*-${{ env.TESTNAME }}-*'); do
+          for branch in $(git branch --list --remotes 'origin/release-${{ env.TESTNAME }}-*'); do
             git push origin --delete "${branch}"
           done
       - name: Delete releases

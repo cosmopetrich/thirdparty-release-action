@@ -176,7 +176,7 @@ runs:
     - name: Switch to a new git branch
       shell: bash
       working-directory: ${{ inputs.repo-directory }}
-      run: git checkout -b 'release-${{ inputs.package-name }}-${{ steps.release-name.outputs.name }}-${{ github.run_number }}-${{ github.run_attempt }}'
+      run: git checkout -b 'release-${{ github.run_number }}-${{ github.run_attempt }}-${{ inputs.package-name }}--${{ steps.release-name.outputs.name }}'
     - name: Move files into repository
       shell: bash
       working-directory: ${{ inputs.repo-directory }}

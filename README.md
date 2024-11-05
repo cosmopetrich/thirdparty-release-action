@@ -35,6 +35,14 @@ Under the repository's Actions/General settings page, ensure that the following 
   - "Read and write permissions"
   - "Allow GitHub Actions to create and approve pull requests "
 
+The action will assign a label to the pull requests that it creates to help distinguish them.
+This feature currently is not optional (though the label can be changed with the `pr-label` input`),
+and the lable should be created ahead of time.
+
+ 1. From the main repository page, hit either "Issues' or "Pull Requests".
+ 2. Select the "Labels" button to the right of the search bar, near the "New {Issue,Pull Request}" button.
+ 3. Add a new label with the chosen name. The action's default is `automated-release`.
+
 Within the workflow itself, ensure that the permissions required to commit, create releases, and create PRs are granted.
 Additionally, the workflow should have at least the `contents: write` permission.
 
