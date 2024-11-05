@@ -77,6 +77,17 @@ on:
       - vcpkg.json
 ```
 
+While not an explicit requirement, it is recommended that any important branches (main/master, etc) be
+protected with branch rules. While the action is not desgined to interact with these branches, adding rules
+can help protect against unexpected failure scenarios.
+
+Enabling the "Require a pull request before merging" option with the "Require review from Code Owners" and
+"Dismiss stale pull request approvals when new commits are pushed" sub-options should be enough to prevent the
+action from doing anything unfortunate since Github Actions cannot bypass these restrictions.
+
+Additionally, disabling non-rebase merges in the repository's main settings page may help ensure that
+merges are fast-forward only if possible, reducing the likelihood that releases must be manually updated.
+
 ## Details
 
 At a high level this action does the following.
