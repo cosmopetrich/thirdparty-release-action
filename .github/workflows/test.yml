@@ -24,6 +24,7 @@ concurrency:
 
 permissions:
   contents: write
+  pull-requests: write
 
 env:
   TESTNAME: test-${{ github.run_number }}-${{ github.run_attempt }}
