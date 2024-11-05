@@ -129,6 +129,7 @@ runs:
           mkdir -p "${STAGING}/lib/${plat}"
           cp -r "${plat}"/debug/* "${STAGING}/lib/${plat}"
           cp -r "${plat}"/tools/* "${STAGING}/tools"
+          rm -rf "${STAGING}/lib/${plat}/pkgconfig"
         done
         rmdir "${STAGING}"/tools "${STAGING}/include" >/dev/null 2>&1 || true
         echo "dir=${STAGING}" >> "${GITHUB_OUTPUT}"
