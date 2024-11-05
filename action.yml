@@ -100,7 +100,7 @@ runs:
       shell: bash
       run: |
         NOTES="$(mktemp)"
-        echo "$(git -C '${{ inputs.repo-directory }}' show -s --format=%s)" >> "${NOTES}"
+        echo 'This release includes the following packages.' >> "${NOTES}"
 
         cd '${{ inputs.artifacts-directory }}'
 
@@ -113,8 +113,8 @@ runs:
 
         echo "" >> "${NOTES}"
         echo -n "Built against [${VCPKG_NAME}](${VCPKG_URL})" >> "${NOTES}"
-        echo -n " with $(jq -er '.compiler_id' '${{ inputs.headers-platform }}/vcpkg-build-info.json') $(jq -er '.compiler_toolset' '${{ inputs.headers-platform }}/vcpkg-build-info.json')" >> "${NOTES}"
-        echo " and $(jq -er '.compiler_id' '${{ inputs.headers-platform }}/vcpkg-build-info.json') $(jq -er '.compiler_toolset' '${{ inputs.headers-platform }}/vcpkg-build-info.json')." >> "${NOTES}"
+        echo -n " with $(jq -er '.compiler_id' 'Linux/vcpkg-build-info.json') $(jq -er '.compiler_toolset' 'Linux/vcpkg-build-info.json')" >> "${NOTES}"
+        echo " and $(jq -er '.compiler_id' 'Win64/vcpkg-build-info.json') $(jq -er '.compiler_toolset' 'Win64/vcpkg-build-info.json')." >> "${NOTES}"
 
         echo "file=${NOTES}" >> "$GITHUB_OUTPUT"
     - name: Shuffle files around
@@ -123,14 +123,17 @@ runs:
       working-directory: ${{ inputs.artifacts-directory }}
       run: |
         STAGING="$(mktemp -d)"
-        mkdir -p "${STAGING}"/tools "${STAGING}/include"
-        cp -r '${{ inputs.headers-platform }}'/include/* "${STAGING}/include"
         for plat in *; do
           mkdir -p "${STAGING}/lib/${plat}"
-          cp -r "${plat}"/lib/* "${STAGING}/lib/${plat}"
-          cp -r "${plat}"/tools/* "${STAGING}/tools"
+          cp -r "${plat}"/debug/lib/* "${STAGING}/lib/${plat}"
+          if [ -d "${plat}/tools" ]; then
+            mkdir -p "${STAGING}/tools"
+            cp -r "${plat}"/tools/* "${STAGING}/tools"
+          fi
+          rm -rf "${STAGING}/lib/${plat}/pkgconfig"
         done
-        rmdir "${STAGING}"/tools "${STAGING}/include" >/dev/null 2>&1 || true
+        cp -r '${{ inputs.headers-platform }}'/include "${STAGING}"
+        cp -r '${{ inputs.headers-platform }}'/share "${
         echo "dir=${STAGING}" >> "${GITHUB_OUTPUT}"
     - name: Create release artifact
       id: zip
@@ -138,15 +141,11 @@ runs:
       working-directory: ${{ steps.staging.outputs.dir }}
       run: zip --recurse-paths '${{ steps.release-name.outputs.artifact }}' *
     - name: Create release
-      id: release
       shell: bash
       working-directory: ${{ inputs.repo-directory }}
       run: |
-        URL="$(mktemp)"
         gh release create --draft --notes-file '${{ steps.release-notes.outputs.file }}' --title "${{ steps.release-name.outputs.name }}" \
-        "${{ steps.release-name.outputs.name }}" '${{ steps.staging.outputs.dir }}/${{ steps.release-name.outputs.artifact }}' >> "${URL}"
-        echo "url=$(<$URL)" >> "${GITHUB_OUTPUT}"
-        rm -f "${URL}"
+        "${{ steps.release-name.outputs.name }}" '${{ steps.staging.outputs.dir }}/${{ steps.release-name.outputs.artifact }}'
       env:
         GH_TOKEN: ${{ github.token }}
     - name: Create artifact checksum
@@ -214,11 +213,16 @@ runs:
       working-directory: ${{ inputs.repo-directory }}
       run: git push origin "$(git branch --show-current)"
     - name: Point release at new commit
+      id: release
       shell: bash
       working-directory: ${{ inputs.repo-directory }}
-      run: gh release edit --target "$(git rev-parse HEAD)" '${{ steps.release-name.outputs.name }}'
       env:
         GH_TOKEN: ${{ github.token }}
+      run: |
+        URL="$(mktemp)"
+        gh release edit --target "$(git rev-parse HEAD)" '${{ steps.release-name.outputs.name }}' >> "${URL}"
+        echo "url=$(<$URL)" >> "${GITHUB_OUTPUT}"
+        rm -f "${URL}"
     - name: Open pull request
       shell: bash
       working-directory: ${{ inputs.repo-directory }}
@@ -233,12 +237,9 @@ runs:
         
         The changes here are designed to be the target of release [${{ steps.release-name.outputs.name }}](${{ steps.release.outputs.url }}).
         
-        If everything looks okay then merge this PR, delete its branch, then publish the release.
-        Note that if Github does not perform a fast-forward merge then you will also need to update the release to point to the newly-created commit.
-        See [community/discussion#4618](https://github.com/orgs/community/discussions/4618).
+        If everything looks okay then merge this PR, delete its branch, then publish the release. You may need to manually update the release to point at the newly-created commit if Github does not perform a fast-forward merge. See [community/discussion#4618](https://github.com/orgs/community/discussions/4618).
         
-        If everything is **not** okay then it is safe to delete this PR, its branch, and the release.
-        However, you should fix the underlying problem and allow the workflow to re-run ASAP.
+        If everything is **not** okay then it is safe to delete this PR, its branch, and the release. However, you should fix the underlying problem and allow the workflow to re-run ASAP.
         EOF
         gh pr create --title 'Release ${{ steps.release-name.outputs.name }}' \
           --body-file "${PR_FILE}" --label '${{ inputs.pr-label }}'

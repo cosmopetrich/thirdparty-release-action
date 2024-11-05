@@ -72,6 +72,10 @@ jobs:
         run: |
           [ -f test-output/tools/some-tool ]
           [ -f test-output/tools/some-tool.exe ]
+      - name: Check for absent pkgconfig
+        working-directory: test-output
+        run: |
+          [ ! -e test-output/lib/pkgconfig ]  
       - name: Confirm repo is clean
         working-directory: repo
         run: |
@@ -123,6 +127,7 @@ jobs:
         run: |
           cp -r repo/.test/artifacts test-artifacts
           cp -r repo/.test/artifacts test-artifacts-2
+          rm -r test-artifacts-2/*/tools
           VERSION_1="1.2.3"
           VERSION_2="12.13.14"
           sed -i "s/foolib .*/foolib ${VERSION_1}/" test-artifacts/Win64/vcpkg-installed-packages.txt
@@ -150,8 +155,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh release edit --draft=false '${{ steps.action.outputs.release-name }}'
       - name: Run script
-        working-directory: repo
-        run: ./update-files
+        run: repo/update-files
       - name: (Debug) show repo contents
         working-directory: repo
         run: ls -R
@@ -180,8 +184,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh release edit --draft=false '${{ steps.action-2.outputs.release-name }}'
       - name: Run script a second time
-        working-directory: repo
-        run: ./update-files
+        run: repo/update-files
       - name: Look for expected artifact
         working-directory: repo
         run: |
@@ -194,8 +197,7 @@ jobs:
           cat include/generic.h
           grep '^${{ steps.data.outputs.expected-2 }}$' include/generic.h
       - name: Run script a third time (should be a noop)
-        working-directory: repo
-        run: ./update-files
+        run: repo/update-files
       - name: Look for expected artifact
         working-directory: repo
         run: |
@@ -207,6 +209,11 @@ jobs:
         run: |
           cat include/generic.h
           grep '^${{ steps.data.outputs.expected-2 }}$' include/generic.h
+      - name: Confirm old tools were removed
+        working-directory: repo
+        run: |
+          ls
+          [ ! -d "tools" ]
   version-numbers:
     name: Version numbers
     runs-on: ubuntu-latest

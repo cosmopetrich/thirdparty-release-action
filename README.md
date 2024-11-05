@@ -10,7 +10,14 @@ action and probably won't be much good without, unless care is taken to arrange 
 Possible future improvements include:
 
 - Have the action abort if there's an open PR against the target branch.
-  This is trivial to implement, but it will need to be optiona or the tests will need to be adpated for it.
+  Will probably need to munge the tests to make that work, though. This is trivial to implement, but it will need to be optiona or the tests will need to be adpated for it.
+  Or possibly have it update the existing PR/release, if one exists.
+
+Caveats and non-features include:
+
+- No support for opening PRs against the non-primary branch.
+- Considers draft releases when finding a new version number.
+- No support for packaging release versions of libraries (i.e. without debug libs).
 
 ## Usage
 
@@ -33,11 +40,15 @@ certainly shouldn't be run against PRs.
 
 ## Repository and workflow requirements
 
+### Actions user permissions
+
 Under the repository's Actions/General settings page, ensure that the following are enabled.
 
 - Workflow permissions
   - "Read and write permissions"
   - "Allow GitHub Actions to create and approve pull requests "
+
+### PR/Issue label
 
 The action will assign a label to the pull requests that it creates to help distinguish them.
 This feature currently is not optional (though the label can be changed with the `pr-label` input),
@@ -47,6 +58,8 @@ and the lable should be created ahead of time.
 2.  Select the "Labels" button to the right of the search bar, near the "New {Issue,Pull Request}" button.
 3.  Add a new label with the chosen name. The action's default is `automated-release`.
 
+### Workflow permissions
+
 Within the workflow itself, ensure that the permissions required to commit, create releases, and create PRs are granted.
 Additionally, the workflow should have at least the `contents: write` permission.
 
@@ -55,6 +68,8 @@ permissions:
   contents: write
   pull-requests: write
 ```
+
+### Workflow triggers
 
 It is recommended that the list of paths which trigger the build be as restrictive as possible to prevent
 builds from triggering based on the actions bot's own PRs and commits.
@@ -67,22 +82,36 @@ on:
     branches:
       - master
     paths:
-      - vcpkg.json
+      - .vcpkg/**
   push:
     branches:
       - master
     paths:
-      - vcpkg.json
+      - .vcpkg/**
 ```
+
+### Branch protection
+
+While not an explicit requirement, it is recommended that any important branches (main/master, etc) be
+protected with branch rules. While the action is not desgined to interact with these branches, adding rules
+can help protect against unexpected failure scenarios.
+
+Enabling the "Require a pull request before merging" option with the "Require review from Code Owners" and
+"Dismiss stale pull request approvals when new commits are pushed" sub-options should be enough to prevent the
+action from doing anything unfortunate since Github Actions cannot bypass these restrictions.
+
+Additionally, disabling non-rebase merges in the repository's main settings page may help ensure that
+merges are fast-forward only if possible, reducing the likelihood that releases must be manually updated.
 
 ## Details
 
 At a high level this action does the following.
 
 - Parse the artifacts directory to determine information needed to create a Github Release.
-- Shuffle the include/lib folders from the artifacts directory into a structure that UE expects.
+- Shuffle the include/debug folders from the artifacts directory into a structure that UE expects.
   - Headers are drawn from an arbitrary platform, Win64 by default.
   - Also merge the tools folders of each artifact, if that folder is present.
+  - The debug folder is renamed to lib. This means that, currently, `-release` vcpkg tuplets are not supported.
 - Add or update files to the repository that allow the update-files helper script to run.
 - Generate Build.cs file and add that.
 - Add some other static files.
