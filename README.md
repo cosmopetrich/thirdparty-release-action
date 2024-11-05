@@ -29,7 +29,7 @@ certainly shouldn't be run against PRs.
 
 ## Workflow requirements
 
-Since this action creates a release and commits to the repo, the "read and write" option for the Actions token must be enabled in the repository's settings
+Since this action creates a release, commits to the repo, and opens a PR it will need the "read and write" option for the Actions token to be enabled in the repository's settings.
 Additionally, the workflow should have at least the `contents: write` permission.
 
 ```yaml
@@ -38,8 +38,8 @@ permissions:
   pull-requests: write
 ```
 
-Additionally, it is recommended that the list of paths which trigger the build be as restrictive as possible to prevent
-builds from triggering based on the bot's own actions.
+It is recommended that the list of paths which trigger the build be as restrictive as possible to prevent
+builds from triggering based on the actions bot's own PRs and commits.
 
 ```yaml
 name: Build
@@ -57,12 +57,6 @@ on:
       - vcpkg.json
 ```
 
-Github Actions cannot currently bypass branch protection rules (
-community discussion [#13836](https://github.com/orgs/community/discussions/13836)
-and [#25305](https://github.com/orgs/community/discussions/25305).
-If the target branch is 
-
-Pull requests also cannot force fast-forward-only, see [community discussion #4618](https://github.com/orgs/community/discussions/4618).
 
 ## Details
 
@@ -77,9 +71,9 @@ At a high level this action does the following.
 - Add some other static files.
   - update-files helper script
   - gitattributes and gitignore
-- Commit, push, update the release to point at the new commit.
+- Create a new branch, commit, push, update the release to point at the new commit.
+- Open a PR to merge the branch.
 
-The resulting commit will be left as a draft so that it can be manually editted prior to release.
 
 ## Release naming
 
@@ -117,9 +111,25 @@ The `artifacts-directory` input is expected to contain the following:
 - `{Linux,Win64}/vpckg-build-info.json` - Information on the vcpkg environment used to install the packages.
 - `{Linux,Win64}/vcpkg-installed-packages.txt` - Plain text list of package names and versions present.
 
-## Side-effects
+## Use of a PR vs directly committing
 
-Although the action takes care to operate outside the root of the Actions workspace where possible,
-it will still have the following side-effects on the rest of the build.
+Early versions of this action committed directly to master (or equivilant).
+However, Github Actions cannot currently bypass branch protection rules (
+community discussion [#13836](https://github.com/orgs/community/discussions/13836)
+and [#25305](https://github.com/orgs/community/discussions/25305))
+which would necessitate leaving protections for human users disabled.
 
-- Some git config fields will be set for the provided `repo-directory`, including `core.safecrlf` and user name/email.
+The workaround for this is to have the action create a pull request.
+While it would be very possible to have it merge its own PR,
+currently it will not do so since leaving the PR open provides
+a handy way for a human to check that it isn't doing anything stupid.
+
+One downside tot his is that since pull requests cannot force fast-forward-only 
+(see [community discussion #4618](https://github.com/orgs/community/discussions/4618))
+the user who merges the PR will need to update the release manually if any commits have gone through to master since it was created
+(even if the commit only does something trivial like update the README).
+
+## Todo, probably
+
+Have the action abort if there's an existing PR against the target branch.
+Will probably need to munge the tests to make that work, though.
