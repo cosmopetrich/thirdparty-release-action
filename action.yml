@@ -127,7 +127,7 @@ runs:
         cp -r '${{ inputs.headers-platform }}'/include/* "${STAGING}/include"
         for plat in *; do
           mkdir -p "${STAGING}/lib/${plat}"
-          cp -r "${plat}"/lib/* "${STAGING}/lib/${plat}"
+          cp -r "${plat}"/debug/* "${STAGING}/lib/${plat}"
           cp -r "${plat}"/tools/* "${STAGING}/tools"
         done
         rmdir "${STAGING}"/tools "${STAGING}/include" >/dev/null 2>&1 || true

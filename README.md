@@ -10,7 +10,9 @@ action and probably won't be much good without, unless care is taken to arrange 
 Possible future improvements include:
 
 - Have the action abort if there's an open PR against the target branch.
-  This is trivial to implement, but it will need to be optiona or the tests will need to be adpated for it.
+  Will probably need to munge the tests to make that work, though. This is trivial to implement, but it will need to be optiona or the tests will need to be adpated for it.
+- Support for packaging release versions of libraries (i.e. without debug libs).
+  Not currently needed and unlikely to be needed since this was made for modding.
 
 ## Usage
 
@@ -80,9 +82,10 @@ on:
 At a high level this action does the following.
 
 - Parse the artifacts directory to determine information needed to create a Github Release.
-- Shuffle the include/lib folders from the artifacts directory into a structure that UE expects.
+- Shuffle the include/debug folders from the artifacts directory into a structure that UE expects.
   - Headers are drawn from an arbitrary platform, Win64 by default.
   - Also merge the tools folders of each artifact, if that folder is present.
+  - The debug folder is renamed to lib. This means that, currently, `-release` vcpkg tuplets are not supported.
 - Add or update files to the repository that allow the update-files helper script to run.
 - Generate Build.cs file and add that.
 - Add some other static files.
