@@ -1,6 +1,4 @@
-adef94f1fcf103d4b3fe5df8e6da335a433cd4547b338e63524dd9b95ee4a81b  ./include/generic.h
+aa5024a2b9f62e87bf9ba66e3f3de233a5f27abf5f37ba0b6ec8aba7f912cdbd  ./include/generic.h
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ./include/windows-only.h
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ./lib/Linux/foo-linux.lib
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ./lib/Win64/foo-windows.lib
-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ./tools/some-tool
-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ./tools/some-tool.exe
