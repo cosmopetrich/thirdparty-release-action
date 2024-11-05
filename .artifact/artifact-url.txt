@@ -1,0 +1,1 @@
+https://github.com/cosmopetrich/ue-thirdparty-release-action/releases/download/test-164-2-version-numbers-x.y.z-2-7.8.9-2/bazlib-7.8.9-2.zip
