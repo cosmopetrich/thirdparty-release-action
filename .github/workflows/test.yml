@@ -44,7 +44,6 @@ jobs:
         uses: ./repo/
         with:
           artifacts-directory: repo/.test/artifacts
-          push: false
           release-name-prefix: ${{ env.TESTNAME }}-${{ github.job }}-
           package-name: foolib
           pr-label: ${{ env.PR_LABEL }}
@@ -141,7 +140,6 @@ jobs:
         uses: ./repo/
         with:
           artifacts-directory: test-artifacts
-          push: false
           release-name-prefix: ${{ env.TESTNAME }}-${{ github.job }}-
           package-name: foolib
           pr-label: ${{ env.PR_LABEL }}
@@ -172,7 +170,6 @@ jobs:
         uses: ./repo/
         with:
           artifacts-directory: test-artifacts-2
-          push: false
           release-name-prefix: ${{ env.TESTNAME }}-${{ github.job }}-
           package-name: foolib
           pr-label: ${{ env.PR_LABEL }}
@@ -256,7 +253,6 @@ jobs:
         uses: ./repo/
         with:
           artifacts-directory: repo/.test/artifacts
-          push: false
           release-name-prefix: ${{ env.TESTNAME }}-${{ github.job }}-${{ matrix.test }}-
           package-name: ${{ matrix.package-name }}
           pr-label: ${{ env.PR_LABEL }}
@@ -293,7 +289,7 @@ jobs:
           FILTER='.[].headRefName | select(match("^release-.*-${{ env.TESTNAME }}-"))'
           for pr in $(gh pr list --json headRefName --jq "${FILTER}"); do
             gh pr close --delete-branch "${pr}" \
-              --comment "This was created for a test and was not intended to be merged." " || true
+              --comment "This was created for a test and was not intended to be merged." || true
           done
       - name: Delete branches
         run: |
