@@ -1,5 +1,5 @@
-# This file is for this repo itself
-# See gitattributes-deployed for the version shipped out to other repos
+# This file is deployed via cosmopetrich/ue-thirdparty-release-action
+# Manual changes will be overwritten!
 
 * text=auto eol=crlf
-deployed/update-files text eol=lf
+update-files text eol=lf
