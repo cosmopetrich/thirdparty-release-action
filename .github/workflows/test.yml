@@ -123,6 +123,7 @@ jobs:
         run: |
           cp -r repo/.test/artifacts test-artifacts
           cp -r repo/.test/artifacts test-artifacts-2
+          rm -r test-artifacts-2/*/tools
           VERSION_1="1.2.3"
           VERSION_2="12.13.14"
           sed -i "s/foolib .*/foolib ${VERSION_1}/" test-artifacts/Win64/vcpkg-installed-packages.txt
@@ -207,6 +208,11 @@ jobs:
         run: |
           cat include/generic.h
           grep '^${{ steps.data.outputs.expected-2 }}$' include/generic.h
+      - name: Confirm old tools were removed
+        working-directory: repo
+        run: |
+          ls
+          [ ! -d "tools" ]
   version-numbers:
     name: Version numbers
     runs-on: ubuntu-latest

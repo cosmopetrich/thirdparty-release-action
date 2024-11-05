@@ -11,6 +11,7 @@ Possible future improvements include:
 
 - Have the action abort if there's an open PR against the target branch.
   Will probably need to munge the tests to make that work, though. This is trivial to implement, but it will need to be optiona or the tests will need to be adpated for it.
+- Or possibly have it update the existing PR/release, if one exists.
 - Support for packaging release versions of libraries (i.e. without debug libs).
   Not currently needed and unlikely to be needed since this was made for modding.
 
