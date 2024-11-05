@@ -11,14 +11,6 @@ inputs:
     description: Path containing the checked-out repository
     required: true
   #
-  # Set this to false when testing a PR which isn't from a branch in this repo
-  #
-  push:
-    # Strange syntax is due to https://github.com/actions/runner/issues/2238
-    description: Set to anything other than "enabled" to disable pushing to origin
-    default: enabled
-    required: true
-  #
   # Inputs below this point should not normally be altered
   #
   commit-email:
@@ -49,6 +41,9 @@ inputs:
     description: Platform to copy headers from
     default: Win64
     required: true
+  pr-label:
+    description: Label to assign to pull requests (must be created first)
+    default: "automated-release"
   release-name-prefix:
     description: Prefix to place in front of the release name
     default: v
@@ -246,5 +241,5 @@ runs:
         However, you should fix the underlying problem and allow the workflow to re-run ASAP.
         EOF
         gh pr create --title 'Release ${{ steps.release-name.outputs.name }}' \
-          --body-file "${PR_FILE}"
+          --body-file "${PR_FILE}" --label '${{ inputs.pr-label }}'
         rm -f "${PR_FILE}"

@@ -28,6 +28,7 @@ permissions:
 
 env:
   TESTNAME: test-${{ github.run_number }}-${{ github.run_attempt }}
+  PR_LABEL: automated-test
 
 jobs:
   contents:
@@ -46,6 +47,7 @@ jobs:
           push: false
           release-name-prefix: ${{ env.TESTNAME }}-${{ github.job }}-
           package-name: foolib
+          pr-label: ${{ env.PR_LABEL }}
           repo-directory: repo
       - name: Download artifacts
         working-directory: repo
@@ -142,6 +144,7 @@ jobs:
           push: false
           release-name-prefix: ${{ env.TESTNAME }}-${{ github.job }}-
           package-name: foolib
+          pr-label: ${{ env.PR_LABEL }}
           repo-directory: repo
       - name: Convert to a non-draft release
         working-directory: repo
@@ -172,6 +175,7 @@ jobs:
           push: false
           release-name-prefix: ${{ env.TESTNAME }}-${{ github.job }}-
           package-name: foolib
+          pr-label: ${{ env.PR_LABEL }}
           repo-directory: repo
       - name: Convert to a non-draft release
         working-directory: repo
@@ -255,6 +259,7 @@ jobs:
           push: false
           release-name-prefix: ${{ env.TESTNAME }}-${{ github.job }}-${{ matrix.test }}-
           package-name: ${{ matrix.package-name }}
+          pr-label: ${{ env.PR_LABEL }}
           repo-directory: repo
       - name: Check for expected outputs
         run: |
@@ -287,7 +292,8 @@ jobs:
         run: |
           FILTER='.[].headRefName | select(match("^release-.*-${{ env.TESTNAME }}-"))'
           for pr in $(gh pr list --json headRefName --jq "${FILTER}"); do
-            gh pr close --delete-branch --comment "This was created for a test and was not intended to be merged." || true
+            gh pr close --delete-branch "${pr}" \
+              --comment "This was created for a test and was not intended to be merged." " || true
           done
       - name: Delete branches
         run: |
