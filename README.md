@@ -29,7 +29,13 @@ certainly shouldn't be run against PRs.
 
 ## Workflow requirements
 
-Since this action creates a release, commits to the repo, and opens a PR it will need the "read and write" option for the Actions token to be enabled in the repository's settings.
+Under the repository's Actions/General settings page, ensure that the following are enabled.
+
+- Workflow permissions
+  - "Read and write permissions"
+  - "Allow GitHub Actions to create and approve pull requests "
+
+Within the workflow itself, ensure that the permissions required to commit, create releases, and create PRs are granted.
 Additionally, the workflow should have at least the `contents: write` permission.
 
 ```yaml

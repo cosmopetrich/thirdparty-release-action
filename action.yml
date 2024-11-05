@@ -150,7 +150,7 @@ runs:
         URL="$(mktemp)"
         gh release create --draft --notes-file '${{ steps.release-notes.outputs.file }}' --title "${{ steps.release-name.outputs.name }}" \
         "${{ steps.release-name.outputs.name }}" '${{ steps.staging.outputs.dir }}/${{ steps.release-name.outputs.artifact }}' >> "${URL}"
-        echo "url=$(<$URL)"
+        echo "url=$(<$URL)" >> "${GITHUB_OUTPUT}"
         rm -f "${URL}"
       env:
         GH_TOKEN: ${{ github.token }}
@@ -181,7 +181,7 @@ runs:
     - name: Switch to a new git branch
       shell: bash
       working-directory: ${{ inputs.repo-directory }}
-      run: git checkout -b 'release-${{ inputs.package-name }}-${{ github.run_number }}-${{ github.run_attempt }}'
+      run: git checkout -b 'release-${{ inputs.package-name }}-${{ steps.release_name.outputs.name }}-${{ github.run_number }}-${{ github.run_attempt }}'
     - name: Move files into repository
       shell: bash
       working-directory: ${{ inputs.repo-directory }}
@@ -232,18 +232,18 @@ runs:
       run: |
         PR_FILE="$(mktemp)"
         ACTIONS_URL='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}'
-        ACTIONS_NAME='run #${{ github.run_number }} (attempt ${{ github.rub_attempt }} of the ${{ github.workflow }} workflow'
-        cat <<-EOF > "${PR_FILE}"
-          This PR was opened by [${ACTIONS_NAME}](${ACTIONS_URL}).
+        ACTIONS_NAME='${{ github.workflow }} #${{ github.run_number }}-${{ github.run_attempt }}'
+        cat <<EOF > "${PR_FILE}"
+        This PR was opened by [${ACTIONS_NAME}](${ACTIONS_URL}).
         
-          The changes here are designed to be the target of [release ${{ steps.release-name.outputs.name }}](${{ steps.release.outputs.url }}).
+        The changes here are designed to be the target of release [${{ steps.release-name.outputs.name }}](${{ steps.release.outputs.url }}).
         
-          If everything looks okay then merge this PR, delete its branch, then publish the release.
-          Note that if Github does not perform a fast-forward merge then you will also need to update the release to point to the newly-created commit.
-          See [community/discussion#4618](https://github.com/orgs/community/discussions/4618).
+        If everything looks okay then merge this PR, delete its branch, then publish the release.
+        Note that if Github does not perform a fast-forward merge then you will also need to update the release to point to the newly-created commit.
+        See [community/discussion#4618](https://github.com/orgs/community/discussions/4618).
 
-          If everything is **not** okay then it is safe to delete this PR, its branch, and the release.
-          However, you should fix the underlying problem and allow the workflow to re-run ASAP.
+        If everything is **not** okay then it is safe to delete this PR, its branch, and the release.
+        However, you should fix the underlying problem and allow the workflow to re-run ASAP.
         EOF
         gh pr create --title 'Release ${{ steps.release-name.outputs.name }}' \
           --body-file "${PR_FILE}"
