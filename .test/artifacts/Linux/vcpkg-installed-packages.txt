@@ -1,0 +1,4 @@
+foolib 1.2.3
+barlib 4.5.6
+bazlib 7.8.9
+quxlib 10.11#1
