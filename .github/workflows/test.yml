@@ -107,7 +107,7 @@ jobs:
         working-directory: test-output
         run: |
           cat ../repo/.artifact/contents.sha256
-          [ $(wc -l < ../repo/.artifact/contents.sha256) -eq 6 ]
+          [ $(wc -l < ../repo/.artifact/contents.sha256) -eq 7 ]
           echo "Line count OK"
           sha256sum --check --strict ../repo/.artifact/contents.sha256
       - name: Check build script
