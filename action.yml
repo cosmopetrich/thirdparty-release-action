@@ -135,7 +135,7 @@ runs:
         cp -r '${{ inputs.headers-platform }}'/include "${STAGING}"
         cp -r '${{ inputs.headers-platform }}'/share "${STAGING}"
         rm -rf "${STAGING}"/share/doc
-        rm -rf "${STAGING}"/share/vcpkg-cmake-*
+        rm -rf "${STAGING}"/share/vcpkg-cmake*
         find "${STAGING}/share" -type f -not -name copyright -delete
         echo "dir=${STAGING}" >> "${GITHUB_OUTPUT}"
     - name: Create release artifact

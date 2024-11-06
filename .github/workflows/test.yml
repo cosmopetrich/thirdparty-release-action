@@ -77,13 +77,10 @@ jobs:
         run: |
           [ ! -e test-output/lib/pkgconfig ]  
       - name: Check for licenses
-        working-directory: test-output
         run: |
           [ -f test-output/share/libfoo/copyright ]
       - name: Check other shared cruft
-        working-directory: test-output
         run: |
-          ls -R test-output/share
           [ ! -f test-output/share/vcpkg-cmake/another-file ]
           [ ! -f test-output/share/vcpkg-cmake/copyright ]
       - name: Confirm repo is clean
