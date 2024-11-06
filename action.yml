@@ -141,15 +141,11 @@ runs:
       working-directory: ${{ steps.staging.outputs.dir }}
       run: zip --recurse-paths '${{ steps.release-name.outputs.artifact }}' *
     - name: Create release
-      id: release
       shell: bash
       working-directory: ${{ inputs.repo-directory }}
       run: |
-        URL="$(mktemp)"
         gh release create --draft --notes-file '${{ steps.release-notes.outputs.file }}' --title "${{ steps.release-name.outputs.name }}" \
         "${{ steps.release-name.outputs.name }}" '${{ steps.staging.outputs.dir }}/${{ steps.release-name.outputs.artifact }}' >> "${URL}"
-        echo "url=$(<$URL)" >> "${GITHUB_OUTPUT}"
-        rm -f "${URL}"
       env:
         GH_TOKEN: ${{ github.token }}
     - name: Create artifact checksum
@@ -217,11 +213,16 @@ runs:
       working-directory: ${{ inputs.repo-directory }}
       run: git push origin "$(git branch --show-current)"
     - name: Point release at new commit
+      id: release
       shell: bash
       working-directory: ${{ inputs.repo-directory }}
-      run: gh release edit --target "$(git rev-parse HEAD)" '${{ steps.release-name.outputs.name }}'
       env:
         GH_TOKEN: ${{ github.token }}
+      run: |
+        URL="$(mktemp)"
+        gh release edit --target "$(git rev-parse HEAD)" '${{ steps.release-name.outputs.name }}' >> "${URL}"
+        echo "url=$(<$URL)" >> "${GITHUB_OUTPUT}"
+        rm -f "${URL}"
     - name: Open pull request
       shell: bash
       working-directory: ${{ inputs.repo-directory }}
@@ -236,12 +237,9 @@ runs:
         
         The changes here are designed to be the target of release [${{ steps.release-name.outputs.name }}](${{ steps.release.outputs.url }}).
         
-        If everything looks okay then merge this PR, delete its branch, then publish the release.
-        Note that if Github does not perform a fast-forward merge then you will also need to update the release to point to the newly-created commit.
-        See [community/discussion#4618](https://github.com/orgs/community/discussions/4618).
+        If everything looks okay then merge this PR, delete its branch, then publish the release. You may need to manually update the release to point at the newly-created commit if Github does not perform a fast-forward merge. See [community/discussion#4618](https://github.com/orgs/community/discussions/4618).
         
-        If everything is **not** okay then it is safe to delete this PR, its branch, and the release.
-        However, you should fix the underlying problem and allow the workflow to re-run ASAP.
+        If everything is **not** okay then it is safe to delete this PR, its branch, and the release. However, you should fix the underlying problem and allow the workflow to re-run ASAP.
         EOF
         gh pr create --title 'Release ${{ steps.release-name.outputs.name }}' \
           --body-file "${PR_FILE}" --label '${{ inputs.pr-label }}'
