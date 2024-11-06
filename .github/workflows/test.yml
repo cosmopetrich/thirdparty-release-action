@@ -70,8 +70,8 @@ jobs:
           [ ! -f test-output/lib/Linux/foo-windows.lib ]
       - name: Check tools
         run: |
-          [ -f test-output/tools/some-tool ]
-          [ -f test-output/tools/some-tool.exe ]
+          [ -f test-output/tools/Linux/some-tool ]
+          [ -f test-output/tools/Win64/some-tool.exe ]
       - name: Check for absent pkgconfig
         working-directory: test-output
         run: |
