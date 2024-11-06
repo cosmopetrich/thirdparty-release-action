@@ -232,7 +232,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        test: [x.y.z, x.y.z-1, x.y.z-2, case-sensitive]
+        test: [x.y.z, x.y.z-1, x.y.z-2, "x.y#1", case-sensitive]
         include:
           - test: x.y.z
             package-name: foolib
@@ -248,6 +248,10 @@ jobs:
             expected-artifact: "bazlib-7.8.9-2.zip"
             expected-release: "7.8.9-2"
             pre-existing-release: "7.8.9-1"
+          - test: "x.y#1"
+            package-name: quxlib
+            expected-artifact: "quxlib-10.11.zip"
+            expected-release: "10.11"
           - test: case-sensitive
             package-name: fooLIB
             expected-artifact: "fooLIB-1.2.3.zip"

@@ -73,7 +73,7 @@ runs:
           echo 'Failed to identify version of ${{ inputs.package-name }}' >&2
           exit 1
         fi
-        VERSION="$(awk '{print $2}' <<< ${PACKAGE} | tr -d '\r')"
+        VERSION="$(awk '{print $2}' <<< ${PACKAGE} | tr -d '\r' | sed 's/#.*//')"
         echo "Installed packages list contains package '${{ inputs.package-name }}' version '${VERSION}'"
         ARTIFACT="${{ inputs.package-name }}-${VERSION}"
         RELEASE="${{ inputs.release-name-prefix }}${VERSION}"
