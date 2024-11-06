@@ -1,0 +1,96 @@
+#! /usr/bin/env bash
+
+# This file is deployed via cosmopetrich/ue-thirdparty-release-action
+# Manual changes will be overwritten!
+
+# Populate this repository with files from a Github Releases artifact.
+# Helps avoid storing large binaries in git or running into git-lfs limits.
+#
+# The script takes no arguments. Its logic is follows.
+#
+# 1. Switch to the directory containing the script.
+# 2. Evaluate a checksum file listing all files which are in the artifact. Exit OK if everything matches.
+# 3. Exit with an error if there are untracked changes to the repository.
+# 4. Evaluate a checksum file listing the artifact..
+# 5. If the artifact checksum failed then re-download it.
+# 6. Do a full "git clean".
+# 7. Unzip the artifact into this directory.
+# 8. Perform a final check sum and exit with an error if there's a mismatch.
+# 9. Switch back to the original working directory.
+#
+# Caveats:
+#   - Will not detect the need to get the artifact if gitignored files were *added*.
+#   - Expects the artifact checksum file to contain only a single entry.
+#   - Requires awk, bash, curl, git, sha256sum, unzip. All should be present in the Git install for Windows.
+#     I looked at writing this for Powershell but it would require PS7.3 which is not preinstalled.
+#     So if users are going to have to install something it may as well be a real shell.
+#   - Making it a part of the C# build script was also an option.
+#     However, stdlib-only C# seems a little clumsy for this kind of thing.
+
+set -euo pipefail
+
+do_update () {
+        local artifact_url_file=".artifact/artifact-url.txt"
+        local artifact_checksum_file=".artifact/artifact.sha256"
+        local contents_checksum_file=".artifact/contents.sha256"
+	local zip_folder=".artifact"
+
+        if [ ! -s "${artifact_url_file}" ]; then
+                echo "Artifact URL file ${artifact_url_file} does not exist or is empty" >&2
+                exit 1
+        fi
+
+        local status=0
+        sha256sum --check --quiet --strict "${contents_checksum_file}" >/dev/null 2>&1 || status=$?
+        if [ $status -eq 0 ]; then
+                exit 0
+        fi
+
+        local git_status=; git_status="$(git status --short)"
+        if [ -n "${git_status}" ]; then
+                echo "Repository at ${PWD} has local changes that should be undone or checked in before continuing" >&2
+                exit 1
+        fi
+
+        local artifact_file; artifact_file="$(awk '{print $2}' ${artifact_checksum_file} | head -n1)"
+        if [ -z "${artifact_file}" ]; then
+                echo "Could not determine artifact filename from ${artifact_checksum_file}" >&2
+                exit 1
+        fi
+
+        local status=0
+	cd "${zip_folder}"
+	sha256sum --check --strict --quiet $(basename $artifact_checksum_file) >/dev/null 2>&1 || status=$?
+	cd - >/dev/null
+        if [ $status -ne 0 ]; then
+		local url="$(<$artifact_url_file)"
+                echo "Updating ${artifact_file}"
+		echo "Downloading from ${url}"
+                rm -f "${zip_folder}/${artifact_file}"
+                curl --fail --location --show-error --silent --output "${zip_folder}/${artifact_file}" "${url}"
+        fi
+
+        echo "Updating files"
+        git clean -dfx --exclude "${artifact_file}"
+        unzip -oq "${zip_folder}/${artifact_file}"
+
+        local status=0
+        sha256sum --check --quiet "${contents_checksum_file}" >/dev/null 2>&1 || status=$?
+        if [ $status -ne 0 ]; then
+                echo "ERROR: One or more checksums did not validate after downloading the release artifact" >&2
+                echo "Run 'sha256sum --quiet -cw ${contents_checksum_file}' from inside the repository to see which" >&2
+                exit 1
+        fi
+
+        echo "All files validated successfully. Happy modding!"
+}
+
+main () {
+        local old_cwd="${PWD}"
+        local script_dir="$(dirname ${0})"
+        cd "${script_dir}"
+        do_update
+        cd "${old_cwd}"
+}
+
+main
