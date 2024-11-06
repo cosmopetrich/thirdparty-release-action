@@ -128,7 +128,7 @@ runs:
           cp -r "${plat}"/debug/lib/* "${STAGING}/lib/${plat}"
           if [ -d "${plat}/tools" ]; then
             mkdir -p "${STAGING}/tools"
-            cp -r "${plat}"/tools/* "${STAGING}/tools"
+            cp -r "${plat}"/tools/*/* "${STAGING}/tools"
           fi
           rm -rf "${STAGING}/lib/${plat}/pkgconfig"
         done
