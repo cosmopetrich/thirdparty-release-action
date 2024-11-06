@@ -1,0 +1,246 @@
+name: ue-thirdparty-release
+description: Shuffle files around to create a release of a third-party Unreal Engine C++ library
+inputs:
+  artifacts-directory:
+    description: Path containing files which should be placed in the release artifact
+    required: true
+  package-name:
+    description: Name of this package
+    required: true
+  repo-directory:
+    description: Path containing the checked-out repository
+    required: true
+  #
+  # Inputs below this point should not normally be altered
+  #
+  commit-email:
+    description: Email to use when committing
+    default: "41898282+github-actions[bot]@users.noreply.github.com"
+    required: true
+  commit-user:
+    description: Name to use when committing
+    default: github-actions[bot]
+    required: true
+  filename-artifact-url:
+    description: Name of file in which to store the artifact URL
+    default: artifact-url.txt
+    required: true
+  filename-checksum-artifact:
+    description: Name of file in which to store the artifact checksum
+    default: artifact.sha256
+    required: true
+  filename-checksum-contents:
+    description: Name of file in which to store the files checksums
+    default: contents.sha256
+    required: true
+  filename-retrieve-script:
+    description: Name of helper script for grabbing the release
+    default: update-files
+    required: true
+  headers-platform:
+    description: Platform to copy headers from
+    default: Win64
+    required: true
+  pr-label:
+    description: Label to assign to pull requests (must be created first)
+    default: "automated-release"
+  release-name-prefix:
+    description: Prefix to place in front of the release name
+    default: v
+  repo-name:
+    description: Name of the repository being operated on
+    default: ${{ github.repository }}
+    required: true
+outputs:
+  artifact-name:
+    description: Filename of the release artifact
+    value: ${{ steps.release-name.outputs.artifact }}
+  release-name:
+    description: Name of the newly-created release
+    value: ${{ steps.release-name.outputs.name }}
+runs:
+  using: "composite"
+  steps:
+    - name: Determine release name
+      id: release-name
+      shell: bash
+      working-directory: ${{ inputs.artifacts-directory }}
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        PACKAGE="$(grep -i '^${{ inputs.package-name }} ' '${{ inputs.headers-platform }}/vcpkg-installed-packages.txt' || true)"
+        if [ -z "${PACKAGE}" ]; then
+          echo 'Failed to identify version of ${{ inputs.package-name }}' >&2
+          exit 1
+        fi
+        VERSION="$(awk '{print $2}' <<< ${PACKAGE} | tr -d '\r')"
+        echo "Installed packages list contains package '${{ inputs.package-name }}' version '${VERSION}'"
+        ARTIFACT="${{ inputs.package-name }}-${VERSION}"
+        RELEASE="${{ inputs.release-name-prefix }}${VERSION}"
+
+        LAST_RELEASE="$(mktemp)"
+        gh release list --repo ${{ inputs.repo-name }} --json tagName --jq ".[].tagName | select(startswith(\"${RELEASE}\"))" | head -n 1 > "${LAST_RELEASE}"
+        if [ -n "$(<$LAST_RELEASE)" ]; then
+          echo "Similar previous version: $(<$LAST_RELEASE)"
+          if [ "$(<$LAST_RELEASE)" = "${RELEASE}" ]; then
+            RELEASE="${RELEASE}-1"
+            ARTIFACT="${ARTIFACT}-1"
+          else
+            SUFFIX="$(grep -oE '[0-9]*$' $LAST_RELEASE)"
+            ((SUFFIX++))
+            RELEASE="${RELEASE}-${SUFFIX}"
+            ARTIFACT="${ARTIFACT}-${SUFFIX}"
+          fi
+        fi
+        echo "Using version '${RELEASE}'"
+        echo "name=${RELEASE}" >> "${GITHUB_OUTPUT}"
+        echo "artifact=${ARTIFACT}.zip" >> "${GITHUB_OUTPUT}"
+    - name: Generate release notes
+      id: release-notes
+      shell: bash
+      run: |
+        NOTES="$(mktemp)"
+        echo 'This release includes the following packages.' >> "${NOTES}"
+
+        cd '${{ inputs.artifacts-directory }}'
+
+        echo "" >> "${NOTES}"
+        VCPKG_URL="https://github.com/microsoft/vcpkg/tree/$(jq -er '.baseline_long' '${{ inputs.headers-platform }}/vcpkg-build-info.json')"
+        VCPKG_NAME="vcpkg@$(jq -er '.baseline_short' '${{ inputs.headers-platform }}/vcpkg-build-info.json')"
+
+        echo "" >> "${NOTES}"
+        cat '${{ inputs.headers-platform }}/vcpkg-installed-packages.txt' >> "${NOTES}"
+
+        echo "" >> "${NOTES}"
+        echo -n "Built against [${VCPKG_NAME}](${VCPKG_URL})" >> "${NOTES}"
+        echo -n " with $(jq -er '.compiler_id' 'Linux/vcpkg-build-info.json') $(jq -er '.compiler_toolset' 'Linux/vcpkg-build-info.json')" >> "${NOTES}"
+        echo " and $(jq -er '.compiler_id' 'Win64/vcpkg-build-info.json') $(jq -er '.compiler_toolset' 'Win64/vcpkg-build-info.json')." >> "${NOTES}"
+
+        echo "file=${NOTES}" >> "$GITHUB_OUTPUT"
+    - name: Shuffle files around
+      id: staging
+      shell: bash
+      working-directory: ${{ inputs.artifacts-directory }}
+      run: |
+        STAGING="$(mktemp -d)"
+        mkdir -p "${STAGING}"/tools "${STAGING}/include"
+        cp -r '${{ inputs.headers-platform }}'/include/* "${STAGING}/include"
+        for plat in *; do
+          mkdir -p "${STAGING}/lib/${plat}"
+          cp -r "${plat}"/debug/lib/* "${STAGING}/lib/${plat}"
+          if [ -d "${plat}/tools" ]; then
+            cp -r "${plat}"/tools/* "${STAGING}/tools"
+          fi
+          rm -rf "${STAGING}/lib/${plat}/pkgconfig"
+        done
+        rmdir "${STAGING}"/tools "${STAGING}/include" >/dev/null 2>&1 || true
+        echo "dir=${STAGING}" >> "${GITHUB_OUTPUT}"
+    - name: Create release artifact
+      id: zip
+      shell: bash
+      working-directory: ${{ steps.staging.outputs.dir }}
+      run: zip --recurse-paths '${{ steps.release-name.outputs.artifact }}' *
+    - name: Create release
+      shell: bash
+      working-directory: ${{ inputs.repo-directory }}
+      run: |
+        gh release create --draft --notes-file '${{ steps.release-notes.outputs.file }}' --title "${{ steps.release-name.outputs.name }}" \
+        "${{ steps.release-name.outputs.name }}" '${{ steps.staging.outputs.dir }}/${{ steps.release-name.outputs.artifact }}'
+      env:
+        GH_TOKEN: ${{ github.token }}
+    - name: Create artifact checksum
+      shell: bash
+      working-directory: ${{ steps.staging.outputs.dir }}
+      run: sha256sum '${{ steps.release-name.outputs.artifact }}' > '${{ inputs.filename-checksum-artifact }}'
+    - name: Create files checksum
+      shell: bash
+      working-directory: ${{ steps.staging.outputs.dir }}
+      run: sha256sum $(find . -type f -not -name '*.zip' -not -name '*.sha256' | sort) > '${{ inputs.filename-checksum-contents }}'
+    - name: Write release URL to file
+      shell: bash
+      working-directory: ${{ inputs.repo-directory }}
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        echo 'https://github.com/${{ inputs.repo-name }}/releases/download/${{ steps.release-name.outputs.name }}/${{ steps.release-name.outputs.artifact }}' \
+          > '${{ steps.staging.outputs.dir }}/${{ inputs.filename-artifact-url }}'
+    - name: Create CS build config
+      shell: bash
+      env:
+        # https://github.com/orgs/community/discussions/49245
+        GH_ACTION_PATH: ${{ github.action_path }}
+      run: |
+        export PACKAGE_NAME='${{ inputs.package-name }}'
+        envsubst < "${GH_ACTION_PATH}/deployed/Build.cs" > '${{ steps.staging.outputs.dir}}/${{ inputs.package-name }}.Build.cs'
+    - name: Switch to a new git branch
+      shell: bash
+      working-directory: ${{ inputs.repo-directory }}
+      run: git checkout -b 'release-${{ github.run_number }}-${{ github.run_attempt }}-${{ inputs.package-name }}--${{ steps.release-name.outputs.name }}'
+    - name: Move files into repository
+      shell: bash
+      working-directory: ${{ inputs.repo-directory }}
+      env:
+        # https://github.com/orgs/community/discussions/49245
+        GH_ACTION_PATH: ${{ github.action_path }}
+      run: |
+        cp '${{ steps.staging.outputs.dir }}/${{ inputs.package-name }}.Build.cs' .
+        cp "${GH_ACTION_PATH}/deployed/gitattributes" .gitattributes
+        cp "${GH_ACTION_PATH}/deployed/gitignore" .gitignore
+        mkdir -p .artifact
+        cp "${GH_ACTION_PATH}/deployed/update-files" '${{ inputs.filename-retrieve-script }}'
+        mv '${{ steps.staging.outputs.dir }}/${{ inputs.filename-artifact-url }}' .artifact
+        mv '${{ steps.staging.outputs.dir }}/${{ inputs.filename-checksum-artifact }}' .artifact
+        mv '${{ steps.staging.outputs.dir }}/${{ inputs.filename-checksum-contents }}' .artifact
+        rm -rf '${{ steps.staging.outpurs.dir }}'
+    - name: Commit changes
+      shell: bash
+      working-directory: ${{ inputs.repo-directory }}
+      run: |
+        git config core.safecrlf false
+        git add \
+          .gitattributes .gitignore \
+          '${{ inputs.filename-retrieve-script }}' \
+          '${{ inputs.package-name }}.Build.cs' \
+          '.artifact/${{ inputs.filename-artifact-url }}' \
+          '.artifact/${{ inputs.filename-checksum-artifact }}' \
+          '.artifact/${{ inputs.filename-checksum-contents }}' \
+          '.artifact/${{ inputs.filename-artifact-url }}'
+        git config user.name '${{ inputs.commit-user }}'
+        git config user.email '${{ inputs.commit-email }}'
+        git diff-index --quiet HEAD || git commit --all --message '${{ steps.release-name.outputs.name }}'
+    - name: Push
+      shell: bash
+      working-directory: ${{ inputs.repo-directory }}
+      run: git push origin "$(git branch --show-current)"
+    - name: Point release at new commit
+      id: release
+      shell: bash
+      working-directory: ${{ inputs.repo-directory }}
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        URL="$(mktemp)"
+        gh release edit --target "$(git rev-parse HEAD)" '${{ steps.release-name.outputs.name }}' >> "${URL}"
+        echo "url=$(<$URL)" >> "${GITHUB_OUTPUT}"
+        rm -f "${URL}"
+    - name: Open pull request
+      shell: bash
+      working-directory: ${{ inputs.repo-directory }}
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        PR_FILE="$(mktemp)"
+        ACTIONS_URL='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}'
+        ACTIONS_NAME='${{ github.workflow }} #${{ github.run_number }}-${{ github.run_attempt }}'
+        cat <<EOF > "${PR_FILE}"
+        This PR was opened by [${ACTIONS_NAME}](${ACTIONS_URL}).
+        
+        The changes here are designed to be the target of release [${{ steps.release-name.outputs.name }}](${{ steps.release.outputs.url }}).
+        
+        If everything looks okay then merge this PR, delete its branch, then publish the release. You may need to manually update the release to point at the newly-created commit if Github does not perform a fast-forward merge. See [community/discussion#4618](https://github.com/orgs/community/discussions/4618).
+        
+        If everything is **not** okay then it is safe to delete this PR, its branch, and the release. However, you should fix the underlying problem and allow the workflow to re-run ASAP.
+        EOF
+        gh pr create --title 'Release ${{ steps.release-name.outputs.name }}' \
+          --body-file "${PR_FILE}" --label '${{ inputs.pr-label }}'
+        rm -f "${PR_FILE}"
