@@ -126,7 +126,8 @@ The release will be named according to the format `[{prefix}]{upstream-version}[
 
 - `{prefix}` is an arbitrary string that defaults to "v".
   It can be altered using one of the action's inputs.
-- `{upstream-version}` is the version of the package specified in the `package-name` input which was built by vcpkg.
+- `{upstream-version}` is the version of the package specified in the `package-name` input which was built by vcpkg
+  with the port revision number ('#123'), if any, removed. 
 - `{revision}` is added if a release named `[{prefix}]{upstream-version}` already exists,
   which could occur if vcpkg updates its port without targetting a new upstream release,
   or if configuration in this repository (such as the Build.cs file) is updated.

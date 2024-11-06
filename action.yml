@@ -137,6 +137,7 @@ runs:
         rm -rf "${STAGING}"/share/doc
         rm -rf "${STAGING}"/share/vcpkg-cmake*
         find "${STAGING}/share" -type f -not -name copyright -delete
+        find -depth -type d -empty -delete
         echo "dir=${STAGING}" >> "${GITHUB_OUTPUT}"
     - name: Create release artifact
       id: zip

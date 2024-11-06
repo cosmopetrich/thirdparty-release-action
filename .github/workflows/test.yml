@@ -57,7 +57,7 @@ jobs:
         working-directory: test-output
         run: unzip *.zip
       - name: (Debug) Show artifact contents
-        run: ls -R test-output/
+        run: ls -Ra test-output/
       - name: Check headers
         run: |
           [ -f test-output/include/generic.h ]
@@ -81,6 +81,7 @@ jobs:
           [ -f test-output/share/libfoo/copyright ]
       - name: Check other shared cruft
         run: |
+          [ ! -e test-output/share/empty-dir ]
           [ ! -f test-output/share/vcpkg-cmake/another-file ]
           [ ! -f test-output/share/vcpkg-cmake/copyright ]
       - name: Confirm repo is clean
@@ -167,7 +168,7 @@ jobs:
         run: repo/update-files
       - name: (Debug) show repo contents
         working-directory: repo
-        run: ls -R
+        run: ls -Ra
       - name: Look for expected artifact
         working-directory: repo
         run: |
