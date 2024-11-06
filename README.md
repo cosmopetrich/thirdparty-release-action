@@ -17,7 +17,6 @@ Caveats and non-features include:
 
 - No support for opening PRs against the non-primary branch.
 - Considers draft releases when finding a new version number.
-- No support for packaging release versions of libraries (i.e. without debug libs).
 
 ## Usage
 
@@ -108,12 +107,11 @@ merges are fast-forward only if possible, reducing the likelihood that releases 
 At a high level this action does the following.
 
 - Parse the artifacts directory to determine information needed to create a Github Release.
-- Shuffle the include/debug folders from the artifacts directory into a structure that UE expects.
+- Shuffle the include folders from the artifacts directory into a structure that UE expects.
   - Headers are drawn from an arbitrary platform, Win64 by default.
   - Also include the tools folders of each artifact, if that folder is present.
     The contents will be partially flattened, though each platform's tools will be in a separate subfolder to help avoid
     strange behaviour where bash on Windows treats `foo` and `foo.exe` as the same file.
-  - The debug folder is renamed to lib. This means that, currently, `-release` vcpkg tuplets are not supported.
 - Add or update files to the repository that allow the update-files helper script to run.
 - Generate Build.cs file and add that.
 - Add some other static files.

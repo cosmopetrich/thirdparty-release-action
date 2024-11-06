@@ -125,7 +125,7 @@ runs:
         STAGING="$(mktemp -d)"
         for plat in *; do
           mkdir -p "${STAGING}/lib/${plat}"
-          cp -r "${plat}"/debug/lib/* "${STAGING}/lib/${plat}"
+          cp -r "${plat}"/lib/* "${STAGING}/lib/${plat}"
           if [ -d "${plat}/tools" ]; then
             mkdir -p "${STAGING}/tools/${plat}"
             cp -r "${plat}"/tools/*/* "${STAGING}/tools/${plat}"
