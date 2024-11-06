@@ -71,7 +71,7 @@ do_update () {
         fi
 
         echo "Updating files"
-        git clean -dfx --exclude "${artifact_file}"
+        git clean -dfqx --exclude "${artifact_file}"
         unzip -oq "${zip_folder}/${artifact_file}"
 
         local status=0
