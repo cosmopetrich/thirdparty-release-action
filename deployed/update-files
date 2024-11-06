@@ -59,7 +59,9 @@ do_update () {
         fi
 
         local status=0
-        sha256sum --check --strict --quiet ${artifact_checksum_file} >/dev/null 2>&1 || status=$?
+	cd "${zip_folder}"
+	sha256sum --check --strict --quiet $(basename artifact_checksum_file) >/dev/null 2>&1 || status=$?
+	cd - >/dev/null
         if [ $status -ne 0 ]; then
 		local url="$(<$artifact_url_file)"
                 echo "Updating ${artifact_file}"
@@ -74,7 +76,7 @@ do_update () {
 
         local status=0
         sha256sum --check --quiet "${contents_checksum_file}" >/dev/null 2>&1 || status=$?
-        if [ $status -ne ]; then
+        if [ $status -ne 0 ]; then
                 echo "One or more checksums did not validate after downloading the release artifact" >&2
                 echo "Run 'sha256sum -cw ${contents_checksum_file} from inside the repository to see which" >&2
                 exit 1

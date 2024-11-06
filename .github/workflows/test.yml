@@ -123,6 +123,8 @@ jobs:
         run: ls .gitattributes .gitignore
   script:
     name: Script
+    # Possibly this should run on windows since that's where most users will be running the script
+    # However the action wasn't made to run there and I don't currenlty intend to make it work
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -204,7 +206,10 @@ jobs:
           cat include/generic.h
           grep '^${{ steps.data.outputs.expected-2 }}$' include/generic.h
       - name: Run script a third time (should be a noop)
-        run: repo/update-files
+        # Intentionally break the URL file to confirm that we aren't re-downloading it
+        run: |
+          echo "fake-testing-url" > repo/.artifact/artifact-url.txt
+          repo/update-files
       - name: Look for expected artifact
         working-directory: repo
         run: |
