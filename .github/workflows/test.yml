@@ -76,6 +76,13 @@ jobs:
         working-directory: test-output
         run: |
           [ ! -e test-output/lib/pkgconfig ]  
+      - name: Check for licenses
+        run: |
+          [ -f test-output/share/libfoo/copyright ]
+      - name: Check other shared cruft
+        run: |
+          [ ! -f test-output/share/vcpkg-cmake/another-file ]
+          [ ! -f test-output/share/vcpkg-cmake/copyright ]
       - name: Confirm repo is clean
         working-directory: repo
         run: |
@@ -100,7 +107,7 @@ jobs:
         working-directory: test-output
         run: |
           cat ../repo/.artifact/contents.sha256
-          [ $(wc -l < ../repo/.artifact/contents.sha256) -eq 6 ]
+          [ $(wc -l < ../repo/.artifact/contents.sha256) -eq 7 ]
           echo "Line count OK"
           sha256sum --check --strict ../repo/.artifact/contents.sha256
       - name: Check build script
