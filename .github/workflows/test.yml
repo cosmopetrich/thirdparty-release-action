@@ -151,8 +151,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh release edit --draft=false '${{ steps.action.outputs.release-name }}'
       - name: Run script
-        working-directory: repo
-        run: ./update-files
+        run: repo/update-files
       - name: (Debug) show repo contents
         working-directory: repo
         run: ls -R
@@ -181,8 +180,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh release edit --draft=false '${{ steps.action-2.outputs.release-name }}'
       - name: Run script a second time
-        working-directory: repo
-        run: ./update-files
+        run: repo/update-files
       - name: Look for expected artifact
         working-directory: repo
         run: |
@@ -195,8 +193,7 @@ jobs:
           cat include/generic.h
           grep '^${{ steps.data.outputs.expected-2 }}$' include/generic.h
       - name: Run script a third time (should be a noop)
-        working-directory: repo
-        run: ./update-files
+        run: repo/update-files
       - name: Look for expected artifact
         working-directory: repo
         run: |
