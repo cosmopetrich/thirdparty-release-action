@@ -1,0 +1,1 @@
+https://github.com/cosmopetrich/ue-thirdparty-release-action/releases/download/test-186-1-contents-1.2.3/foolib-1.2.3.zip
