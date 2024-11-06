@@ -145,7 +145,7 @@ runs:
       working-directory: ${{ inputs.repo-directory }}
       run: |
         gh release create --draft --notes-file '${{ steps.release-notes.outputs.file }}' --title "${{ steps.release-name.outputs.name }}" \
-        "${{ steps.release-name.outputs.name }}" '${{ steps.staging.outputs.dir }}/${{ steps.release-name.outputs.artifact }}' >> "${URL}"
+        "${{ steps.release-name.outputs.name }}" '${{ steps.staging.outputs.dir }}/${{ steps.release-name.outputs.artifact }}'
       env:
         GH_TOKEN: ${{ github.token }}
     - name: Create artifact checksum
