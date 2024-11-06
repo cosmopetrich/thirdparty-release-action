@@ -123,17 +123,17 @@ runs:
       working-directory: ${{ inputs.artifacts-directory }}
       run: |
         STAGING="$(mktemp -d)"
-        mkdir -p "${STAGING}"/tools "${STAGING}/include"
-        cp -r '${{ inputs.headers-platform }}'/include/* "${STAGING}/include"
         for plat in *; do
           mkdir -p "${STAGING}/lib/${plat}"
           cp -r "${plat}"/debug/lib/* "${STAGING}/lib/${plat}"
           if [ -d "${plat}/tools" ]; then
+            mkdir -p "${STAGING}/tools"
             cp -r "${plat}"/tools/* "${STAGING}/tools"
           fi
           rm -rf "${STAGING}/lib/${plat}/pkgconfig"
         done
-        rmdir "${STAGING}"/tools "${STAGING}/include" >/dev/null 2>&1 || true
+        cp -r '${{ inputs.headers-platform }}'/include "${STAGING}"
+        cp -r '${{ inputs.headers-platform }}'/share "${
         echo "dir=${STAGING}" >> "${GITHUB_OUTPUT}"
     - name: Create release artifact
       id: zip

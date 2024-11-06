@@ -72,6 +72,10 @@ jobs:
         run: |
           [ -f test-output/tools/some-tool ]
           [ -f test-output/tools/some-tool.exe ]
+      - name: Check for absent pkgconfig
+        working-directory: test-output
+        run: |
+          [ ! -e test-output/lib/pkgconfig ]  
       - name: Confirm repo is clean
         working-directory: repo
         run: |
