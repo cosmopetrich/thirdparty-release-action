@@ -1,0 +1,5 @@
+# This file is deployed via cosmopetrich/ue-thirdparty-release-action
+# Manual changes will be overwritten!
+
+* text=auto eol=crlf
+update-files text eol=lf
