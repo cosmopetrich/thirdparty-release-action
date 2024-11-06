@@ -1,0 +1,7 @@
+6beb0bb0aec9dff7b9f30b78cec1883cc8b42bc77c2da129a5fed0fb088cc0ff  ./include/generic.h
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ./include/windows-only.h
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ./lib/Linux/foo-linux.lib
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ./lib/Win64/foo-windows.lib
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ./share/libfoo/copyright
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ./tools/Linux/some-tool
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ./tools/Win64/some-tool.exe
