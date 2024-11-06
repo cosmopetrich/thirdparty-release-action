@@ -72,12 +72,12 @@ do_update () {
 
         echo "Updating files"
         git clean -dfx --exclude "${artifact_file}"
-        unzip -q "${zip_folder}/${artifact_file}"
+        unzip -oq "${zip_folder}/${artifact_file}"
 
         local status=0
         sha256sum --check --quiet "${contents_checksum_file}" >/dev/null 2>&1 || status=$?
         if [ $status -ne 0 ]; then
-                echo "One or more checksums did not validate after downloading the release artifact" >&2
+                echo "ERROR: One or more checksums did not validate after downloading the release artifact" >&2
                 echo "Run 'sha256sum --quiet -cw ${contents_checksum_file}' from inside the repository to see which" >&2
                 exit 1
         fi
