@@ -298,10 +298,9 @@ jobs:
           find . -type f
           [ "$(find . -type f)" = './${{ steps.action.outputs.artifact-name }}' ]
       - name: Confirm correct build config exists
-        working-directory: test-output
+        working-directory: repo
         run: |
           PACKAGE='${{ matrix.output-package-name || matrix.package-name }}'
-          unzip './${{ steps.action.outputs.artifact-name }}'
           ls
           cat "${PACKAGE}.Build.cs"
           COUNT="$(grep -c ${PACKAGE} ${PACKAGE}.Build.cs)"
