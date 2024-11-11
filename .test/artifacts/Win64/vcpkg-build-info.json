@@ -1,0 +1,7 @@
+{
+  "baseline_short": "deadbeef",
+  "baseline_long": "deadbeefa1b2c3d4e5",
+  "compiler_id": "MSVC",
+  "compiler_version": "1234.56.78.0",
+  "compiler_toolset": "123.456.789"
+}
