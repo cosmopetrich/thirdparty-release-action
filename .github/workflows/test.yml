@@ -233,7 +233,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        test: [x.y.z, x.y.z-1, x.y.z-2, "x.y#1", case-sensitive]
+        test: [x.y.z, x.y.z-1, x.y.z-2, "x.y#1", case-sensitive, different-name]
         include:
           - test: x.y.z
             package-name: foolib
@@ -257,6 +257,11 @@ jobs:
             package-name: fooLIB
             expected-artifact: "fooLIB-1.2.3.zip"
             expected-release: "1.2.3"
+          - test: different-name
+            package-name: foolib
+            output-package-name: foo
+            expected-artifact: "foo-1.2.3.zip"
+            expected-release: "1.2.3"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -278,6 +283,7 @@ jobs:
         with:
           artifacts-directory: repo/.test/artifacts
           release-name-prefix: ${{ env.TESTNAME }}-${{ github.job }}-${{ matrix.test }}-
+          output-package-name: ${{ matrix.output-package-name }}
           package-name: ${{ matrix.package-name }}
           pr-label: ${{ env.PR_LABEL }}
           repo-directory: repo

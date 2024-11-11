@@ -7,6 +7,8 @@ inputs:
   package-name:
     description: Name of this package
     required: true
+  output-package-name:
+    description: Override the package-name used for the final artifact
   repo-directory:
     description: Path containing the checked-out repository
     required: true
@@ -75,7 +77,8 @@ runs:
         fi
         VERSION="$(awk '{print $2}' <<< ${PACKAGE} | tr -d '\r' | sed 's/#.*//')"
         echo "Installed packages list contains package '${{ inputs.package-name }}' version '${VERSION}'"
-        ARTIFACT="${{ inputs.package-name }}-${VERSION}"
+        OUTPUT_PACKAGE_NAME='${{ inputs.output-package-name || inputs.package-name }}'
+        ARTIFACT="${OUTPUT_PACKAGE_NAME}-${VERSION}"
         RELEASE="${{ inputs.release-name-prefix }}${VERSION}"
 
         LAST_RELEASE="$(mktemp)"
@@ -95,6 +98,7 @@ runs:
         echo "Using version '${RELEASE}'"
         echo "name=${RELEASE}" >> "${GITHUB_OUTPUT}"
         echo "artifact=${ARTIFACT}.zip" >> "${GITHUB_OUTPUT}"
+        echo "output-package-name=${OUTPUT_PACKAGE_NAME}" >> "${GITHUB_OUTPUT}"
     - name: Generate release notes
       id: release-notes
       shell: bash
@@ -117,6 +121,10 @@ runs:
         echo " and $(jq -er '.compiler_id' 'Win64/vcpkg-build-info.json') $(jq -er '.compiler_toolset' 'Win64/vcpkg-build-info.json')." >> "${NOTES}"
 
         echo "file=${NOTES}" >> "$GITHUB_OUTPUT"
+    - name: Switch to a new git branch
+      shell: bash
+      working-directory: ${{ inputs.repo-directory }}
+      run: git checkout -b 'release-${{ github.run_number }}-${{ github.run_attempt }}-${{ inputs.package-name }}-${{ steps.release-name.outputs.name }}'
     - name: Shuffle files around
       id: staging
       shell: bash
@@ -174,12 +182,8 @@ runs:
         # https://github.com/orgs/community/discussions/49245
         GH_ACTION_PATH: ${{ github.action_path }}
       run: |
-        export PACKAGE_NAME='${{ inputs.package-name }}'
-        envsubst < "${GH_ACTION_PATH}/deployed/Build.cs" > '${{ steps.staging.outputs.dir}}/${{ inputs.package-name }}.Build.cs'
-    - name: Switch to a new git branch
-      shell: bash
-      working-directory: ${{ inputs.repo-directory }}
-      run: git checkout -b 'release-${{ github.run_number }}-${{ github.run_attempt }}-${{ inputs.package-name }}-${{ steps.release-name.outputs.name }}'
+        export PACKAGE_NAME='${{ steps.release-name.outputs.output-package-name }}'
+        envsubst < "${GH_ACTION_PATH}/deployed/Build.cs" > "${{ steps.staging.outputs.dir}}/${PACKAGE_NAME}.Build.cs"
     - name: Move files into repository
       shell: bash
       working-directory: ${{ inputs.repo-directory }}
@@ -187,7 +191,7 @@ runs:
         # https://github.com/orgs/community/discussions/49245
         GH_ACTION_PATH: ${{ github.action_path }}
       run: |
-        cp '${{ steps.staging.outputs.dir }}/${{ inputs.package-name }}.Build.cs' .
+        cp '${{ steps.staging.outputs.dir }}/${{ steps.release-name.outputs.output-package-name }}.Build.cs' .
         cp "${GH_ACTION_PATH}/deployed/gitattributes" .gitattributes
         cp "${GH_ACTION_PATH}/deployed/gitignore" .gitignore
         mkdir -p .artifact
@@ -204,7 +208,7 @@ runs:
         git add \
           .gitattributes .gitignore \
           '${{ inputs.filename-retrieve-script }}' \
-          '${{ inputs.package-name }}.Build.cs' \
+          '${{ steps.release-name.outputs.output-package-name }}.Build.cs' \
           '.artifact/${{ inputs.filename-artifact-url }}' \
           '.artifact/${{ inputs.filename-checksum-artifact }}' \
           '.artifact/${{ inputs.filename-checksum-contents }}' \

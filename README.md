@@ -142,6 +142,7 @@ They were styled after the [Debian Pacakge Policy](https://www.debian.org/doc/de
 The artifact will be named according to the format `{package}-{release}.zip` where:
 
 - `{package}` is the name provided to the `package-name` input.
+   It may be overridden using the `output-package-name` input.
 - `{release}` is the release **without** the prefix, i.e. `{upstream-version}[-{revision}]`.
 
 If `package-name` was provided with some specific casing then it will be preserved in the artifact name.
