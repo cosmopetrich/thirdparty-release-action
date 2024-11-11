@@ -111,13 +111,6 @@ jobs:
           [ $(wc -l < ../repo/.artifact/contents.sha256) -eq 7 ]
           echo "Line count OK"
           sha256sum --check --strict ../repo/.artifact/contents.sha256
-      - name: Check build script
-        working-directory: repo
-        run: |
-          cat foolib.Build.cs
-          COUNT="$(grep -c 'foolib' foolib.Build.cs)"
-          echo "Found ${COUNT} occurrences, expecting 2"
-          [ $COUNT -eq 2 ]
       - name: Check gitattributes and gitignore
         # Effectively a stub test since these might already exist in this repo
         working-directory: repo
@@ -304,6 +297,16 @@ jobs:
         run: |
           find . -type f
           [ "$(find . -type f)" = './${{ steps.action.outputs.artifact-name }}' ]
+      - name: Confirm correct build config exists
+        working-directory: test-output
+        run: |
+          PACKAGE='${{ matrix.output-package-name | matrix.package-name }}'
+          unzip './${{ steps.action.outputs.artifact-name }}'
+          ls
+          cat "${PACKAGE}.Build.cs"
+          COUNT="$(grep -c ${PACKAGE} ${PACKAGE}.Build.cs)"
+          echo "Found ${COUNT} occurrences of '${PACKAGE}', expecting 2"
+          [ $COUNT -eq 2 ]
   cleanup:
     name: Cleanup
     needs: [contents, script, version-numbers]
