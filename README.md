@@ -17,6 +17,8 @@ Caveats and non-features include:
 
 - No support for opening PRs against the non-primary branch.
 - Considers draft releases when finding a new version number.
+- Created releases will contain "source code" archives which are essentially empty.
+  [Github does not currently allow disabling these](https://github.com/orgs/community/discussions/6003).
 
 ## Usage
 
