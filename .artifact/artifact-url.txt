@@ -1,0 +1,1 @@
+https://github.com/cosmopetrich/ue-thirdparty-release-action/releases/download/test-202-1-version-numbers-x.y#1-10.11/quxlib-10.11.zip
