@@ -1,0 +1,339 @@
+#
+# Note that this _does not_ test pushing to origin.
+# Though I previously experimented with something like
+# ${{ github.event_name == 'push' || github.event.pull_request.head.repo.name == github.repository }}
+#
+
+name: Tests
+on:
+  workflow_dispatch:
+  pull_request:
+    paths-ignore:
+      - LICENSE
+      - "*.md"
+  push:
+    branches:
+      - "v*"
+    paths-ignore:
+      - LICENSE
+      - "*.md"
+
+concurrency:
+  group: ${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  TESTNAME: test-${{ github.run_number }}-${{ github.run_attempt }}
+  PR_LABEL: automated-test
+
+jobs:
+  contents:
+    name: Contents
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: repo
+      - name: Run action
+        id: action
+        uses: ./repo/
+        with:
+          artifacts-directory: repo/.test/artifacts
+          release-name-prefix: ${{ env.TESTNAME }}-${{ github.job }}-
+          package-name: foolib
+          pr-label: ${{ env.PR_LABEL }}
+          repo-directory: repo
+      - name: Download artifacts
+        working-directory: repo
+        run: sleep 10; gh release download --dir ../test-output '${{ steps.action.outputs.release-name }}'
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Extract artifact
+        working-directory: test-output
+        run: unzip *.zip
+      - name: (Debug) Show artifact contents
+        run: ls -Ra test-output/
+      - name: Check headers
+        run: |
+          [ -f test-output/include/generic.h ]
+          [ -f test-output/include/windows-only.h ]
+          [ ! -f test-output/include/linux-only.lib ]
+      - name: Check libs
+        run: |
+          [ -f test-output/lib/Win64/foo-windows.lib ]
+          [ -f test-output/lib/Linux/foo-linux.lib ]
+          [ ! -f test-output/lib/Linux/foo-windows.lib ]
+      - name: Check tools
+        run: |
+          [ -f test-output/tools/Linux/some-tool ]
+          [ -f test-output/tools/Win64/some-tool.exe ]
+      - name: Check for absent pkgconfig
+        working-directory: test-output
+        run: |
+          [ ! -e test-output/lib/pkgconfig ]  
+      - name: Check for licenses
+        run: |
+          [ -f test-output/share/libfoo/copyright ]
+      - name: Check other shared cruft
+        run: |
+          [ ! -e test-output/share/empty-dir ]
+          [ ! -f test-output/share/vcpkg-cmake/another-file ]
+          [ ! -f test-output/share/vcpkg-cmake/copyright ]
+      - name: Confirm repo is clean
+        working-directory: repo
+        run: |
+          git status
+          [ -z "$(git status --short)" ]
+      - name: Check artifact URL
+        # Don't bother checking contents since the script check will ensure it's valid
+        working-directory: repo
+        run: |
+          cat .artifact/artifact-url.txt
+          [ $(wc -l < ../repo/.artifact/artifact-url.txt) -eq 1 ]
+      - name: Check artifact checksum
+        working-directory: test-output
+        run: |
+          cat ../repo/.artifact/artifact.sha256
+          [ $(wc -l < ../repo/.artifact/artifact.sha256) -eq 1 ]
+          echo "Line count OK"
+          grep -q ' *${{ steps.action.outputs.artifact-name }}$' ../repo/.artifact/artifact.sha256
+          echo "Artifact is present"
+          sha256sum --check --strict ../repo/.artifact/artifact.sha256
+      - name: Check contents checksum
+        working-directory: test-output
+        run: |
+          cat ../repo/.artifact/contents.sha256
+          [ $(wc -l < ../repo/.artifact/contents.sha256) -eq 7 ]
+          echo "Line count OK"
+          sha256sum --check --strict ../repo/.artifact/contents.sha256
+      - name: Check gitattributes and gitignore
+        # Effectively a stub test since these might already exist in this repo
+        working-directory: repo
+        run: ls .gitattributes .gitignore
+  script:
+    name: Script
+    # Possibly this should run on windows since that's where most users will be running the script
+    # However the action wasn't made to run there and I don't currenlty intend to make it work
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: repo
+      - name: Add test data to files
+        id: data
+        run: |
+          cp -r repo/.test/artifacts test-artifacts
+          cp -r repo/.test/artifacts test-artifacts-2
+          rm -r test-artifacts-2/*/tools
+          VERSION_1="1.2.3"
+          VERSION_2="12.13.14"
+          sed -i "s/foolib .*/foolib ${VERSION_1}/" test-artifacts/Win64/vcpkg-installed-packages.txt
+          sed -i "s/foolib .*/foolib ${VERSION_2}/" test-artifacts-2/Win64/vcpkg-installed-packages.txt
+          echo "version-1=${VERSION_1}" >> "${GITHUB_OUTPUT}"
+          echo "version-2=${VERSION_2}" >> "${GITHUB_OUTPUT}"
+          EXPECTED_1='${{ env.TESTNAME }}-first'
+          EXPECTED_2='${{ env.TESTNAME }}-second'
+          echo "${EXPECTED_1}" > test-artifacts/Win64/include/generic.h
+          echo "${EXPECTED_2}" > test-artifacts-2/Win64/include/generic.h
+          echo "expected-1=${EXPECTED_1}" >> "${GITHUB_OUTPUT}"
+          echo "expected-2=${EXPECTED_2}" >> "${GITHUB_OUTPUT}"
+      - name: Run action
+        id: action
+        uses: ./repo/
+        with:
+          artifacts-directory: test-artifacts
+          release-name-prefix: ${{ env.TESTNAME }}-${{ github.job }}-
+          package-name: foolib
+          pr-label: ${{ env.PR_LABEL }}
+          repo-directory: repo
+      - name: Convert to a non-draft release
+        working-directory: repo
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit --draft=false '${{ steps.action.outputs.release-name }}'
+      - name: Run script
+        run: repo/update-files
+      - name: (Debug) show repo contents
+        working-directory: repo
+        run: ls -Ra
+      - name: Look for expected artifact
+        working-directory: repo
+        run: |
+          ls .artifact
+          [ -s '.artifact/foolib-${{ steps.data.outputs.version-1 }}.zip' ]
+      - name: Look for expected content
+        working-directory: repo
+        run: |
+          cat include/generic.h
+          grep '^${{ steps.data.outputs.expected-1 }}$' include/generic.h
+      - name: Run action a second time
+        id: action-2
+        uses: ./repo/
+        with:
+          artifacts-directory: test-artifacts-2
+          release-name-prefix: ${{ env.TESTNAME }}-${{ github.job }}-
+          package-name: foolib
+          pr-label: ${{ env.PR_LABEL }}
+          repo-directory: repo
+      - name: Convert to a non-draft release
+        working-directory: repo
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit --draft=false '${{ steps.action-2.outputs.release-name }}'
+      - name: Run script a second time
+        run: repo/update-files
+      - name: Look for expected artifact
+        working-directory: repo
+        run: |
+          ls .artifact
+          [ ! -f '.artifact/foolib-${{ steps.data.outputs.version-1 }}.zip' ]
+          [ -s '.artifact/foolib-${{ steps.data.outputs.version-2 }}.zip' ]
+      - name: Look for expected content
+        working-directory: repo
+        run: |
+          cat include/generic.h
+          grep '^${{ steps.data.outputs.expected-2 }}$' include/generic.h
+      - name: Run script a third time (should be a noop)
+        # Intentionally break the URL file to confirm that we aren't re-downloading it
+        run: |
+          echo "fake-testing-url" > repo/.artifact/artifact-url.txt
+          repo/update-files
+      - name: Look for expected artifact
+        working-directory: repo
+        run: |
+          ls .artifact
+          [ ! -f '.artifact/foolib-${{ steps.data.outputs.version-1 }}.zip' ]
+          [ -s '.artifact/foolib-${{ steps.data.outputs.version-2 }}.zip' ]
+      - name: Look for expected content
+        working-directory: repo
+        run: |
+          cat include/generic.h
+          grep '^${{ steps.data.outputs.expected-2 }}$' include/generic.h
+      - name: Confirm old tools were removed
+        working-directory: repo
+        run: |
+          ls
+          [ ! -d "tools" ]
+  version-numbers:
+    name: Version numbers
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        test: [x.y.z, x.y.z-1, x.y.z-2, "x.y#1", case-sensitive, different-name]
+        include:
+          - test: x.y.z
+            package-name: foolib
+            expected-artifact: "foolib-1.2.3.zip"
+            expected-release: "1.2.3"
+          - test: x.y.z-1
+            package-name: barlib
+            expected-artifact: "barlib-4.5.6-1.zip"
+            expected-release: "4.5.6-1"
+            pre-existing-release: "4.5.6"
+          - test: x.y.z-2
+            package-name: bazlib
+            expected-artifact: "bazlib-7.8.9-2.zip"
+            expected-release: "7.8.9-2"
+            pre-existing-release: "7.8.9-1"
+          - test: "x.y#1"
+            package-name: quxlib
+            expected-artifact: "quxlib-10.11.zip"
+            expected-release: "10.11"
+          - test: case-sensitive
+            package-name: fooLIB
+            expected-artifact: "fooLIB-1.2.3.zip"
+            expected-release: "1.2.3"
+          - test: different-name
+            package-name: foolib
+            output-package-name: foo
+            expected-artifact: "foo-1.2.3.zip"
+            expected-release: "1.2.3"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: repo
+      - name: Create pre-existing release
+        id: existing
+        if: matrix.pre-existing-release
+        working-directory: repo
+        run: |
+          NAME='${{ env.TESTNAME }}-${{ github.job }}-${{ matrix.test }}-${{ matrix.pre-existing-release }}'
+          gh release create --draft --notes "Release created by automated tests - please ignore" --title "${NAME}" "${NAME}"
+          echo "name=${NAME}" >> "${GITHUB_OUTPUT}"
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Run action
+        id: action
+        uses: ./repo/
+        with:
+          artifacts-directory: repo/.test/artifacts
+          release-name-prefix: ${{ env.TESTNAME }}-${{ github.job }}-${{ matrix.test }}-
+          output-package-name: ${{ matrix.output-package-name }}
+          package-name: ${{ matrix.package-name }}
+          pr-label: ${{ env.PR_LABEL }}
+          repo-directory: repo
+      - name: Check for expected outputs
+        run: |
+          RELEASE="${{ env.TESTNAME }}-${{ github.job }}-${{ matrix.test }}-${{ matrix.expected-release }}"
+          echo "Expecting '${RELEASE}'"
+          [ '${{ steps.action.outputs.release-name }}' = "${RELEASE}" ]
+          echo 'Expecting ${{ matrix.expected-artifact }}'
+          [ '${{ steps.action.outputs.artifact-name }}' = '${{ matrix.expected-artifact }}' ]
+      - name: Download artifacts
+        working-directory: repo
+        run: gh release download --dir ../test-output '${{ steps.action.outputs.release-name }}'
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Confirm correct artifact exists
+        working-directory: test-output
+        run: |
+          find . -type f
+          [ "$(find . -type f)" = './${{ steps.action.outputs.artifact-name }}' ]
+      - name: Confirm correct build config exists
+        working-directory: repo
+        run: |
+          PACKAGE='${{ matrix.output-package-name || matrix.package-name }}'
+          ls
+          cat "${PACKAGE}.Build.cs"
+          COUNT="$(grep -c ${PACKAGE} ${PACKAGE}.Build.cs)"
+          echo "Found ${COUNT} occurrences of '${PACKAGE}', expecting 2"
+          [ $COUNT -eq 2 ]
+  cleanup:
+    name: Cleanup
+    needs: [contents, script, version-numbers]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Delete PRs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          FILTER='.[].headRefName | select(match("^release-.*-${{ env.TESTNAME }}-"))'
+          for pr in $(gh pr list --json headRefName --jq "${FILTER}"); do
+            gh pr close --delete-branch "${pr}" \
+              --comment "This was created for a test and was not intended to be merged." || true
+          done
+      - name: Delete leftover branches
+        run: |
+          git fetch
+          for branch in $(git branch --list --remotes 'origin/release-${{ env.TESTNAME }}-*'); do
+            git push origin --delete "${branch}"
+          done
+      - name: Delete releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          FILTER='.[].tagName | select(startswith("${{ env.TESTNAME }}-"))'
+          for release in $(gh release list --json tagName --jq "${FILTER}"); do
+            gh release delete --yes --cleanup-tag "${release}" || true
+          done
