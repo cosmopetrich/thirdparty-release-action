@@ -222,7 +222,8 @@ runs:
           '.artifact/${{ inputs.filename-artifact-url }}' \
           '.artifact/${{ inputs.filename-checksum-artifact }}' \
           '.artifact/${{ inputs.filename-checksum-contents }}' \
-          '.artifact/${{ inputs.filename-artifact-url }}'
+          '.artifact/${{ inputs.filename-artifact-url }}' \
+          '.artifact/USAGE.md'
         git config user.name '${{ inputs.commit-user }}'
         git config user.email '${{ inputs.commit-email }}'
         git diff-index --quiet HEAD || git commit --all --message '${{ steps.release-name.outputs.name }}'

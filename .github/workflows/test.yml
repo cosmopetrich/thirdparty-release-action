@@ -111,6 +111,11 @@ jobs:
           [ $(wc -l < ../repo/.artifact/contents.sha256) -eq 7 ]
           echo "Line count OK"
           sha256sum --check --strict ../repo/.artifact/contents.sha256
+      - name: Check usage documentation
+        # Effectively a stub - possibly worth testing for an expected string
+        working-directory: repo
+        run: |
+          cat .artifact/USAGE.md
       - name: Check gitattributes and gitignore
         # Effectively a stub test since these might already exist in this repo
         working-directory: repo
