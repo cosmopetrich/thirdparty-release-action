@@ -300,7 +300,7 @@ jobs:
       - name: Confirm correct build config exists
         working-directory: test-output
         run: |
-          PACKAGE='${{ matrix.output-package-name | matrix.package-name }}'
+          PACKAGE='${{ matrix.output-package-name || matrix.package-name }}'
           unzip './${{ steps.action.outputs.artifact-name }}'
           ls
           cat "${PACKAGE}.Build.cs"
