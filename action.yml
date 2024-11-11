@@ -184,6 +184,15 @@ runs:
       run: |
         export PACKAGE_NAME='${{ steps.release-name.outputs.output-package-name }}'
         envsubst < "${GH_ACTION_PATH}/deployed/Build.cs" > "${{ steps.staging.outputs.dir}}/${PACKAGE_NAME}.Build.cs"
+    - name: Create usage documentation
+      shell: bash
+      env:
+        # https://github.com/orgs/community/discussions/49245
+        GH_ACTION_PATH: ${{ github.action_path }}
+      run: |
+        export PACKAGE_NAME='${{ steps.release-name.outputs.output-package-name }}'
+        export REPO_NAME='${{ github.repository }}' 
+        envsubst < "${GH_ACTION_PATH}/deployed/USAGE.md" > "${{ steps.staging.outputs.dir}}/USAGE.md"
     - name: Move files into repository
       shell: bash
       working-directory: ${{ inputs.repo-directory }}
@@ -199,6 +208,7 @@ runs:
         mv '${{ steps.staging.outputs.dir }}/${{ inputs.filename-artifact-url }}' .artifact
         mv '${{ steps.staging.outputs.dir }}/${{ inputs.filename-checksum-artifact }}' .artifact
         mv '${{ steps.staging.outputs.dir }}/${{ inputs.filename-checksum-contents }}' .artifact
+        mv '${{ steps.staging.outputs.dir }}/USAGE.md' .artifact
         rm -rf '${{ steps.staging.outpurs.dir }}'
     - name: Commit changes
       shell: bash
