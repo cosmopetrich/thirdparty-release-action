@@ -1,0 +1,5 @@
+# This file is for this repo itself
+# See gitattributes-deployed for the version shipped out to other repos
+
+* text=auto eol=lf
+deployed/update-files text eol=lf
